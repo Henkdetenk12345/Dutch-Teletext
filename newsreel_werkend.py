@@ -22,11 +22,30 @@ def fetch_articles():
         for entry in parsed["entries"]:
             if count >= feed["max_articles"]:
                 break
+            
+            # Gebruik dezelfde methode als demo.py
             soup = BeautifulSoup(entry.get("summary", ""), "lxml")
-            paragraphs = [p.text.strip() for p in soup.find_all("p") if p.text.strip()]
+            paragraphs_elements = soup.find_all("p")
+            
+            # Converteer naar tekst, net zoals demo.py
+            paragraphs = []
+            for p in paragraphs_elements:
+                text = p.text.strip()
+                if text:  # Alleen toevoegen als er daadwerkelijk tekst is
+                    paragraphs.append(text)
+            
+            # Fallback als er geen paragraphs zijn
+            if not paragraphs:
+                # Probeer de hele summary als plain text
+                summary_text = soup.get_text().strip()
+                if summary_text:
+                    paragraphs = [summary_text]
+                else:
+                    paragraphs = ["Geen inhoud beschikbaar"]
+            
             all_articles.append({
                 "title": entry.get("title", "Geen titel"),
-                "content": paragraphs or ["Geen inhoud beschikbaar"]
+                "content": paragraphs
             })
             count += 1
     return all_articles
@@ -54,7 +73,7 @@ def create_newsreel_page(articles, page_number=152):
         intro_packets += block
     subpages.append({"packets": intro_packets})
 
-    # Artikel subpagina's (zonder bronvermelding)
+    # Artikel subpagina's
     for article in articles:
         packets = copy.deepcopy(template["subpages"][0]["packets"])
         line = 5
