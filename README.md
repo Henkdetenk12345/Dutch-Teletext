@@ -68,11 +68,12 @@ python demo.py
 
 ### Newsreel - Doorlopende Subpagina's
 Genereert 1 pagina (P152) met alle artikelen als doorlopende subpagina's:
-LET OP!: als demo.py runt hoef je newsreel_werkend.py niet te runnen dat gaat automatisch samen met demo.py!
 
 ```bash
 python newsreel_werkend.py
 ```
+
+LET OP!: als demo.py runt hoef je newsreel_werkend.py niet te runnen dat gaat automatisch samen met demo.py!
 
 Bevat:
 - Intro scherm
