@@ -13,6 +13,7 @@
 import newsreel_werkend
 import Eredivisie_uitslagen
 import Eerste_divisie
+import weerkaart_werkend
 import feedparser
 from bs4 import BeautifulSoup
 import lxml
@@ -747,5 +748,6 @@ for headline in headlines:
 	newSubpage = {"packets":copy.deepcopy(frontPageTemplate["subpages"][0]["packets"]) + paraBlock}
 	
 	teletextPage["subpages"].append(newSubpage)
+
 
 exportTTI(pageLegaliser(teletextPage))
