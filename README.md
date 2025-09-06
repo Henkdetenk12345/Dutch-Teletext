@@ -39,6 +39,7 @@ pip install feedparser beautifulsoup4 lxml cchardet
 ### Weerfunctionaliteit
 - **`weertekst_now.py`** - Actuele weersgegevens voor Hillegom
 - **`weertekst_5day.py`** - 5-daagse weerverwachting
+- **`weerkaart_werkend.py`** - Nederlandse weerkaart met huidige temperatuur
 
 ### Hulpbestanden
 - **`textBlock.py`** - Tekst naar teletext blok conversie
