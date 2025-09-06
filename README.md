@@ -126,7 +126,7 @@ Gebruikte feeds:
 
 ## Weer API
 
-Voor weerberichten wordt een externe API gebruikt (zie `weertekst_now.py` en `weertekst_5day.py` voor configuratie).
+Voor weerberichten wordt een externe API gebruikt (zie `weertekst_now.py`, `weertekst_5day.py` en `weerkaart_werkend.py` voor configuratie).
 
 ## Troubleshooting
 
