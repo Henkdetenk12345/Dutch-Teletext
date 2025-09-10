@@ -95,7 +95,7 @@ def maak_weer_kaart(input_bestand="kaart_template.tti"):
             os.makedirs("teletext")
         
         # Schrijf het nieuwe TTI bestand met UTF-8 (zoals V1)
-        output_bestand = "teletext/P403.tti"
+        output_bestand = "teletext/P303.tti"
         with open(output_bestand, 'w', encoding='utf-8') as f:
             f.write(tti_inhoud)
         
