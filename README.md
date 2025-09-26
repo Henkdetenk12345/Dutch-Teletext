@@ -11,7 +11,7 @@ Dit project genereert TTI (Teletext) bestanden uit verschillende Nederlandse nie
 - **NOS Nieuws** (Algemeen, Sport, Jeugdjournaal, Voetbal, Formule 1, Politiek)
 - **Omroep West** (Bollenstreek)  
 - **Eredivisie & Eerste Divisie uitslagen**
-- **Weerberichten** (actueel + 5-daagse verwachting)
+- **Weerberichten** (actueel + 5-daagse verwachting + weerkaart)
 
 Er zijn twee hoofdmodi:
 1. **Individuele pagina's** (demo.py) - elke RSS entry wordt een aparte teletext pagina
