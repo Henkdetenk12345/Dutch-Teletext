@@ -10,6 +10,8 @@
 # Copyright free, do what you like & have fun with it :)
 
 # Start by importing all the libraries we need
+import epg_BMN1
+import epg_BMN2
 import newsreel_werkend
 import Eredivisie_uitslagen
 import Eerste_divisie
@@ -751,3 +753,4 @@ for headline in headlines:
 
 
 exportTTI(pageLegaliser(teletextPage))
+
