@@ -1,11 +1,9 @@
 DE,Read back page  20/11/07
-DS,inserter
-SP,C:\Users\Max de Vos\Downloads\generation\front_page.tti
 PN,10000
 SC,0000
 PS,8000
-CT,8,T
 RE,0
+CT,8,T
 OL,0,        wxTED New page          %H:%M.%S
 OL,1,Qj#iQ7d&5j)0jQ,,<,,,,,,,,,,,<,,,,,,,,,,<
 OL,2,Qj,fQ5  5j "nRS 5 7# j  j#! 5 7# j8!j# 5
@@ -17,6 +15,7 @@ OL,9,CJEUGDNIEUWS     G180CF1 NIEUWS     G240
 OL,10,CSPORTNIEUWS   G  200CPOLITIEKNIEUWSG260
 OL,11,CVOETBALNIEUWS   G220CVOETBALUISTLAGG280
 OL,12,CWEER            G300CKUNST         G700
+OL,13,STV GIDS         G400                   
 OL,14,C                                       
 OL,19,C                                       
 OL,20,C                                       
