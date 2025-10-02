@@ -1,0 +1,29 @@
+PN,40000
+SC,0000
+PS,8000
+RE,0
+CT,8,T
+OL,0,        ECIMSBCeefax-WorlF600A1744478150
+OL,1,T||||,,,l,l,l|||||,,,l,,,l,,,|,l<,,|||||
+OL,2,T]V S#7!55     w%w5745~74    
+OL,3,T]V  S5 +u?!CEN S5555u%5ou%    
+OL,4,T#######################################
+OL,5,C```````````````````````````````````````
+OL,6, BMN1        C401GNPO content adviesC4--
+OL,7, BMN2        C402G                      
+OL,8, NPO1        C403G                      
+OL,9, NPO2        C404GProg voor morgen  C4--
+OL,10, NPO3        C405G                      
+OL,11, Nu & Later  C4--G                      
+OL,12, Primetime   C4--GEnts Extra        C4--
+OL,14, ]D   Check de tv gids van BMN1A401     
+OL,16,                      Qh,,,,,,,,,|4     
+OL,17, Radio index     C440 QjV]W$,,|Q\w5 W5  
+OL,18, Local radio  C4----- QjV]W   +Q\}5W05  
+OL,19, Links for raio  C4-- QjV]W   \,,,,,,%  
+OL,20,                      QjV/////Twggg5  
+OL,21,                      Q"######T----//%  
+OL,22,D]CWeer      G300 CKunstG700CVoetbal 220
+OL,23,D]CStart pag G100 CSportG200CRegio  G160
+OL,24,ABMN1    BBMN2   CRadio   F Nu & Later  
+FL,401,402,440,406,8ff,100
