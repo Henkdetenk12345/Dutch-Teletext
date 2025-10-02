@@ -25,8 +25,12 @@ epg_data = [item for item in epg_data if item.get('start_seconds', 0) >= current
 # Sorteer op starttijd
 epg_data_sorted = sorted(epg_data, key=lambda x: x.get('start_seconds', 0))
 
-# Maak pagina 401 met subpagina's
-teletextPage = {"number": 401, "subpages": []}
+# Maak pagina 401 met subpagina's en cycleTime
+teletextPage = {
+    "number": 401, 
+    "subpages": [],
+    "control": {"cycleTime": "15,T"}
+}
 
 # Index voor het doorlopen van programma's
 program_index = 0
