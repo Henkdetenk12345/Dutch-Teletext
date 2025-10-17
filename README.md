@@ -2,7 +2,7 @@
 
 Scripts om een Nederlandse teletext service te maken met RSS feeds van NOS, Omroep West, voetbal uitslagen en weerberichten.
 
-Let Op: als u dit allemaal niet zelf willen doen kunt u ook deze svn repo toevoegen aan vbit2 `https://feeds.bollenstreekmedianetwerk.nl/bo` (in de toekomst komene er meer regio's)
+Let Op: als u dit allemaal niet zelf willen doen kunt u ook deze svn repo toevoegen aan vbit2 `https://feeds.bollenstreekmedianetwerk.nl/bo` (in de toekomst komen er meer regio's)
 
 ## Beschrijving
 
