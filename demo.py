@@ -449,7 +449,7 @@ newsPageTemplate = loadTTI("news_page.tti")
 maxPages = 10
 startPage = 161
 # Download and parse an RSS Feed of news from NOS
-newsData = feedparser.parse(" https://www.omroepwest.nl/rss/bollenstreek.xml ")
+newsData = feedparser.parse("https://www.omroepwest.nl/rss/bollenstreek.xml")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -545,7 +545,7 @@ newsPageTemplate = loadTTI("news_page.tti")
 maxPages = 10
 startPage = 241
 # Download and parse an RSS Feed of news from NOS
-newsData = feedparser.parse(" https://feeds.nos.nl/nossportformule1 ")
+newsData = feedparser.parse("https://feeds.nos.nl/nossportformule1")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -641,7 +641,7 @@ newsPageTemplate = loadTTI("news_page.tti")
 maxPages = 10
 startPage = 261
 # Download and parse an RSS Feed of news from NOS
-newsData = feedparser.parse(" https://feeds.nos.nl/nosnieuwspolitiek ")
+newsData = feedparser.parse("https://feeds.nos.nl/nosnieuwspolitiek")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -753,4 +753,5 @@ for headline in headlines:
 
 
 exportTTI(pageLegaliser(teletextPage))
+
 
