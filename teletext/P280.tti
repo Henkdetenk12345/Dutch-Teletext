@@ -1,15 +1,13 @@
 DE,Read back page  20/11/07
-DS,inserter
-SP,C:\Users\Max de Vos\Downloads\generation\teletext\P280.tti
 PN,28000
 SC,0000
 PS,8000
-CT,8,T
 RE,0
+CT,8,T
 OL,0,        RTMTXT Startpagina      %H:%M.%S
-OL,1,Qj#iQ7d&5j)0jQ,,<,,,,,,,,,,,<,,,,,,,,,,<
-OL,2,Qj,fQ5  5j "nRS 5 7# j  j#! 5 7# j8!j# 5
-OL,3,Qjp:Q5Q 5j  jRT 5 wq jp js0 5 wq j"4b{ 5
+OL,1,Q       W 7#4   j 5      `u    j 0`p0z0 
+OL,2,Q79j)kj#iW5(16#ij 5h#ij#i 5 h#ij,1ep j  
+OL,3,Qu:j jj jWup%ep:*0e*sqj j e8*sqj 5pp%*p$
 OL,4,D```````````````````````````````````````
 OL,5, EREDIVISIE STAND                  C 281
 OL,7, EERSTE DIVISIE STAND               C282
