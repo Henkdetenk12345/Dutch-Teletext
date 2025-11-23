@@ -153,7 +153,16 @@ def create_newsreel_page(articles, page_number=152):
     except Exception as e:
         print("Kon 5-daagse weerpagina niet toevoegen:", e)
 
-    page = {"number": page_number, "subpages": subpages, "control":{"cycleTime":"25,T"}}
+    # Voeg erasePage en update flags toe voor PS,c008
+    page = {
+        "number": page_number, 
+        "subpages": subpages, 
+        "control": {
+            "cycleTime": "25,T",
+            "erasePage": True,
+            "update": True
+        }
+    }
     exportTTI(pageLegaliser(page))
     print(f"Newsreel met {len(subpages)} subpagina's opgeslagen als pagina {page_number}.")
 
