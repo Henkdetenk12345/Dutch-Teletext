@@ -1,6 +1,7 @@
 import feedparser
 from bs4 import BeautifulSoup
 import copy
+from datetime import datetime
 
 from textBlock import toTeletextBlock
 from page import exportTTI, loadTTI
@@ -13,6 +14,21 @@ rss_feeds = [
     {"url": "https://feeds.nos.nl/jeugdjournaal", "max_articles": 3},
     {"url": "https://www.omroepwest.nl/rss/bollenstreek.xml", "max_articles": 3}
 ]
+
+def get_intro_template():
+    """Bepaalt welke intro template te gebruiken op basis van de datum"""
+    now = datetime.now()
+    day = now.day
+    month = now.month
+    
+    # 29 november t/m 27 december: kerst intro
+    if month == 11 and day >= 29:
+        return "kerst_intro.tti"
+    elif month == 12 and day <= 27:
+        return "kerst_intro.tti"
+    
+    # Standaard intro voor alle andere dagen
+    return "newsreel_intro.tti"
 
 def fetch_articles():
     all_articles = []
@@ -54,24 +70,13 @@ def create_newsreel_page(articles, page_number=152):
     template = loadTTI("news_page.tti")
     subpages = []
 
-    # Intro subpagina
-    intro_lines = [
-        {"line": 3, "text": "        U KIJKT NAAR BMN Teletekst", "align": "center", "colour": "white"},
-        {"line": 5, "text": "NIEUWS EN INFORMATIE VAN", "align": "center", "colour": "white"},
-        {"line": 7, "text": "    DE NOS & OMROEP WEST", "align": "center", "colour": "yellow"},
-        {"line": 11, "text": " De volledige service biedt vele", "align": "left", "colour": "white"},
-        {"line": 12, "text": "  pagina's en is beschikbaar voor", "align": "left", "colour": "white"},
-        {"line": 13, "text": "   iedereen met een geschikt", "align": "left", "colour": "white"},
-        {"line": 14, "text": "        televisietoestel.", "align": "left", "colour": "white"}
-    ]
-    intro_packets = copy.deepcopy(template["subpages"][0]["packets"])
-    for item in intro_lines:
-        block = toTeletextBlock(
-            input={"content": [{"align": item["align"], "content": [{"colour": item["colour"], "text": item["text"]}]}]},
-            line=item["line"]
-        )
-        intro_packets += block
-    subpages.append({"packets": intro_packets})
+    # INTRO SUBPAGINA - laad uit TTI template op basis van datum
+    intro_filename = get_intro_template()
+    print(f"Loading intro template: {intro_filename}")
+    intro_template = loadTTI(intro_filename)
+    intro_subpage = {"packets": copy.deepcopy(intro_template["subpages"][0]["packets"])}
+    subpages.append(intro_subpage)
+    print(f"Intro loaded with {len(intro_subpage['packets'])} packets")
 
     # Artikel subpagina's
     for article in articles:
@@ -164,10 +169,15 @@ def create_newsreel_page(articles, page_number=152):
         }
     }
     exportTTI(pageLegaliser(page))
-    print(f"Newsreel met {len(subpages)} subpagina's opgeslagen als pagina {page_number}.")
+    
+    print(f"\nNewsreel complete!")
+    print(f"Total subpages: {len(subpages)}")
+    print(f"  - Intro: 1 ({intro_filename})")
+    print(f"  - Artikelen: {len(articles)}")
+    print(f"  - Weerpagina's: {len(subpages) - len(articles) - 1}")
 
 if True:
-    print("=== NEWSREEL MET SUBPAGINA'S ZONDER BRON ===")
+    print("=== NEWSREEL MET TTI INTRO ===")
     articles = fetch_articles()
     create_newsreel_page(articles)
     print("Klaar.")
