@@ -10,84 +10,31 @@
 # Copyright free, do what you like & have fun with it :)
 
 # Start by importing all the libraries we need
+import epg_BMN1
+import epg_BMN2
+import newsreel_werkend
+import Eredivisie_uitslagen
+import Eerste_divisie
+import weerkaart_werkend
 import feedparser
 from bs4 import BeautifulSoup
 import lxml
+import cchardet
 import copy
-import newsreel
-import weathermap
-import veikkausliiga
-import hsl_teletext
-from datetime import datetime
-import unicodedata
 
 from textBlock import toTeletextBlock
 from page import exportTTI, loadTTI
 from legaliser import pageLegaliser
 
-# Finse dag- en maandnamen
-FINNISH_DAYS = ["MAANANTAI", "TIISTAI", "KESKIVIIKKO", "TORSTAI", "PERJANTAI", "LAUANTAI", "SUNNUNTAI"]
-FINNISH_MONTHS = ["TAMMIKUU", "HELMIKUU", "MAALISKUU", "HUHTIKUU", "TOUKOKUU", "KESÄKUU", 
-                  "HEINÄKUU", "ELOKUU", "SYYSKUU", "LOKAKUU", "MARRASKUU", "JOULUKUU"]
-
-def get_finnish_day():
-    """Geeft de huidige dag in het Fins terug"""
-    now = datetime.now()
-    return FINNISH_DAYS[now.weekday()]
-
-def get_finnish_date():
-    """Geeft volledige datum in het Fins (bijv. MAANANTAI 16.11.)"""
-    now = datetime.now()
-    day_name = FINNISH_DAYS[now.weekday()]
-    return f"{day_name} {now.day}.{now.month}."
-
-def clean_text_aggressive(text):
-    """Verwijdert/normaliseert alle problematische karakters voor teletext"""
-    if not text:
-        return text
-    
-    # Normaliseer Unicode (bijv. gecombineerde accenten naar enkele karakters)
-    text = unicodedata.normalize('NFKC', text)
-    
-    # Verwijder alle control characters en invisible characters
-    cleaned = []
-    for char in text:
-        cat = unicodedata.category(char)
-        # Cc = Control, Cf = Format, Zs = Space separator
-        if cat == 'Cc' or cat == 'Cf':
-            # Skip control en format characters
-            continue
-        elif cat == 'Zs' and char != ' ':
-            # Vervang alle niet-standaard spaties met normale spatie
-            cleaned.append(' ')
-        else:
-            cleaned.append(char)
-    
-    return ''.join(cleaned)
-
-def vervang_datum_in_tti(tti_data):
-    """Vervangt DAY en DATE placeholders in TTI data met Finse datum"""
-    dag = get_finnish_day()
-    datum = get_finnish_date()
-    
-    # Loop door alle packets en vervang placeholders in de text
-    for subpage in tti_data.get("subpages", []):
-        for packet in subpage.get("packets", []):
-            if "text" in packet:
-                packet["text"] = packet["text"].replace("DAY", dag)
-                packet["text"] = packet["text"].replace("DATE", datum)
-    
-    return tti_data
-
 # Load the template page for the header & footer
-newsPageTemplate = loadTTI("paauutiset_page.tti")
+newsPageTemplate = loadTTI("news_page.tti")
 
 # How many news pages do we want to create?
 maxPages = 10
 startPage = 102
 
-# Download and parse an RSS Feed of news from Yle
-newsData = feedparser.parse("https://yle.fi/rss/uutiset/paauutiset")
+# Download and parse an RSS Feed of news from NOS
+newsData = feedparser.parse("https://feeds.nos.nl/nosnieuwsalgemeen")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -103,15 +50,9 @@ for newsArticle in newsData['entries']:
 	# Create a new teletext page
 	teletextPage = {"number":(pageNum + startPage),"subpages":[{"packets":copy.deepcopy(newsPageTemplate["subpages"][0]["packets"])}]}
 	
-	# Vervang DAY/DATE placeholders in de template
-	teletextPage = vervang_datum_in_tti(teletextPage)
-	
-	# Get the title from Yle RSS
-	clean_title = newsArticle["title"].strip()
-	
 	# Create the title
 	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":clean_title}]}]},
+		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":newsArticle["title"]}]}]},
 		line = line
 	)
 	
@@ -121,26 +62,22 @@ for newsArticle in newsData['entries']:
 	# Add the title to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
 	
-	# Yle gebruikt 'description' voor de samenvatting
-	if "description" in newsArticle:
-		article_text = newsArticle["description"]
-	else:
-		article_text = newsArticle["title"]  # fallback
-
-	# fix: verwijder soft hyphen (U+00AD)
-	article_text = article_text.replace("\u00AD", "")
-    
-	# Voor Yle is description plain text, maar we gebruiken BeautifulSoup voor de zekerheid
-	soup = BeautifulSoup(article_text, "lxml")
+	# NOS provides news within the RSS feed, encoded as HTML
+	# So we use BeautifulSoup to extract the HTML
+	NOSSoup = BeautifulSoup(newsArticle['summary'], "lxml")
+	NOSResults = NOSSoup.find_all('p')
 	
-	# Maak één paragraaf van de beschrijving
-	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"white","text":soup.get_text()}]}]},
-		line = line
-	)
-	
-	# Is this going to make the page too long?
-	if (len(paraBlock) + line) <= 22:
+	for paragraph in NOSResults:
+		# Create a teletext paragraph
+		paraBlock = toTeletextBlock(
+			input = {"content":[{"align":"left","content":[{"colour":"white","text":paragraph.text}]}]},
+			line = line
+		)
+		
+		# Is this going to make the page too long?
+		if (len(paraBlock) + line) > 22:
+			break
+		
 		# Move on the line pointer
 		line += (len(paraBlock) + 1)
 		
@@ -151,8 +88,7 @@ for newsArticle in newsData['entries']:
 	# We run it through "legaliser", this fixes the accented characters, but may be wrong for your country!
 	exportTTI(pageLegaliser(teletextPage))
 	
-	# Use the cleaned title for headlines too
-	headlines.append({"title":clean_title,"number":str(pageNum + startPage)})
+	headlines.append({"title":newsArticle["title"],"number":str(pageNum + startPage)})
 	
 	# Iterate the page counter
 	pageNum += 1
@@ -163,14 +99,11 @@ for newsArticle in newsData['entries']:
 
 # Next we create P101, the headlines
 # Start by loading the template
-newsIndexTemplate = loadTTI("paauutiset_index.tti")
+newsIndexTemplate = loadTTI("news_index.tti")
 
 # Create a page
 teletextPage = {"number":101,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
 
-# Vervang DAY/DATE placeholders met echte Finse datum
-teletextPage = vervang_datum_in_tti(teletextPage)
-
 line = 5
 
 for headline in headlines:
@@ -188,18 +121,17 @@ for headline in headlines:
 	
 	# Add this paragraph to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
-
-exportTTI(pageLegaliser(teletextPage))
-
+	
+	exportTTI(pageLegaliser(teletextPage))
 # Load the template page for the header & footer
-newsPageTemplate = loadTTI("tuoreimmat_page.tti")
+newsPageTemplate = loadTTI("news_page.tti")
 
 # How many news pages do we want to create?
 maxPages = 10
-startPage = 112
+startPage = 201
 
-# Download and parse an RSS Feed of news from Yle
-newsData = feedparser.parse("https://yle.fi/rss/uutiset/tuoreimmat")
+# Download and parse an RSS Feed of news from NOS
+newsData = feedparser.parse("https://feeds.nos.nl/nossportalgemeen")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -215,15 +147,9 @@ for newsArticle in newsData['entries']:
 	# Create a new teletext page
 	teletextPage = {"number":(pageNum + startPage),"subpages":[{"packets":copy.deepcopy(newsPageTemplate["subpages"][0]["packets"])}]}
 	
-	# Vervang DAY/DATE placeholders in de template
-	teletextPage = vervang_datum_in_tti(teletextPage)
-	
-	# Get the title from Yle RSS
-	clean_title = newsArticle["title"].strip()
-	
 	# Create the title
 	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":clean_title}]}]},
+		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":newsArticle["title"]}]}]},
 		line = line
 	)
 	
@@ -233,26 +159,22 @@ for newsArticle in newsData['entries']:
 	# Add the title to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
 	
-	# Yle gebruikt 'description' voor de samenvatting
-	if "description" in newsArticle:
-		article_text = newsArticle["description"]
-	else:
-		article_text = newsArticle["title"]  # fallback
-
-	# fix: verwijder soft hyphen (U+00AD)
-	article_text = article_text.replace("\u00AD", "")
-    
-	# Voor Yle is description plain text, maar we gebruiken BeautifulSoup voor de zekerheid
-	soup = BeautifulSoup(article_text, "lxml")
+	# NOS provides news within the RSS feed, encoded as HTML
+	# So we use BeautifulSoup to extract the HTML
+	NOSSoup = BeautifulSoup(newsArticle['summary'], "lxml")
+	NOSResults = NOSSoup.find_all('p')
 	
-	# Maak één paragraaf van de beschrijving
-	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"white","text":soup.get_text()}]}]},
-		line = line
-	)
-	
-	# Is this going to make the page too long?
-	if (len(paraBlock) + line) <= 22:
+	for paragraph in NOSResults:
+		# Create a teletext paragraph
+		paraBlock = toTeletextBlock(
+			input = {"content":[{"align":"left","content":[{"colour":"white","text":paragraph.text}]}]},
+			line = line
+		)
+		
+		# Is this going to make the page too long?
+		if (len(paraBlock) + line) > 22:
+			break
+		
 		# Move on the line pointer
 		line += (len(paraBlock) + 1)
 		
@@ -263,8 +185,7 @@ for newsArticle in newsData['entries']:
 	# We run it through "legaliser", this fixes the accented characters, but may be wrong for your country!
 	exportTTI(pageLegaliser(teletextPage))
 	
-	# Use the cleaned title for headlines too
-	headlines.append({"title":clean_title,"number":str(pageNum + startPage)})
+	headlines.append({"title":newsArticle["title"],"number":str(pageNum + startPage)})
 	
 	# Iterate the page counter
 	pageNum += 1
@@ -273,15 +194,12 @@ for newsArticle in newsData['entries']:
 	if pageNum > maxPages:
 		break
 
-# Next we create P111, the headlines
+# Next we create P101, the headlines
 # Start by loading the template
-newsIndexTemplate = loadTTI("tuoreimmat_index.tti")
+newsIndexTemplate = loadTTI("news_index.tti")
 
 # Create a page
-teletextPage = {"number":111,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
-
-# Vervang DAY/DATE placeholders met echte Finse datum
-teletextPage = vervang_datum_in_tti(teletextPage)
+teletextPage = {"number":200,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
 
 line = 5
 
@@ -300,18 +218,17 @@ for headline in headlines:
 	
 	# Add this paragraph to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
-
-exportTTI(pageLegaliser(teletextPage))
-
+	
+	exportTTI(pageLegaliser(teletextPage))
 # Load the template page for the header & footer
-newsPageTemplate = loadTTI("sportgeneral_page.tti")
+newsPageTemplate = loadTTI("news_page.tti")
 
 # How many news pages do we want to create?
-maxPages = 4
-startPage = 302
+maxPages = 10
+startPage = 181
 
-# Download and parse an RSS Feed of news from Yle
-newsData = feedparser.parse("https://yle.fi/rss/urheilu")
+# Download and parse an RSS Feed of news from NOS
+newsData = feedparser.parse("https://feeds.nos.nl/jeugdjournaal")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -327,15 +244,9 @@ for newsArticle in newsData['entries']:
 	# Create a new teletext page
 	teletextPage = {"number":(pageNum + startPage),"subpages":[{"packets":copy.deepcopy(newsPageTemplate["subpages"][0]["packets"])}]}
 	
-	# Vervang DAY/DATE placeholders in de template
-	teletextPage = vervang_datum_in_tti(teletextPage)
-	
-	# Get the title from Yle RSS
-	clean_title = newsArticle["title"].strip()
-	
 	# Create the title
 	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":clean_title}]}]},
+		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":newsArticle["title"]}]}]},
 		line = line
 	)
 	
@@ -345,26 +256,22 @@ for newsArticle in newsData['entries']:
 	# Add the title to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
 	
-	# Yle gebruikt 'description' voor de samenvatting
-	if "description" in newsArticle:
-		article_text = newsArticle["description"]
-	else:
-		article_text = newsArticle["title"]  # fallback
-
-	# fix: verwijder soft hyphen (U+00AD)
-	article_text = article_text.replace("\u00AD", "")
-    
-	# Voor Yle is description plain text, maar we gebruiken BeautifulSoup voor de zekerheid
-	soup = BeautifulSoup(article_text, "lxml")
+	# NOS provides news within the RSS feed, encoded as HTML
+	# So we use BeautifulSoup to extract the HTML
+	NOSSoup = BeautifulSoup(newsArticle['summary'], "lxml")
+	NOSResults = NOSSoup.find_all('p')
 	
-	# Maak één paragraaf van de beschrijving
-	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"white","text":soup.get_text()}]}]},
-		line = line
-	)
-	
-	# Is this going to make the page too long?
-	if (len(paraBlock) + line) <= 22:
+	for paragraph in NOSResults:
+		# Create a teletext paragraph
+		paraBlock = toTeletextBlock(
+			input = {"content":[{"align":"left","content":[{"colour":"white","text":paragraph.text}]}]},
+			line = line
+		)
+		
+		# Is this going to make the page too long?
+		if (len(paraBlock) + line) > 22:
+			break
+		
 		# Move on the line pointer
 		line += (len(paraBlock) + 1)
 		
@@ -375,8 +282,7 @@ for newsArticle in newsData['entries']:
 	# We run it through "legaliser", this fixes the accented characters, but may be wrong for your country!
 	exportTTI(pageLegaliser(teletextPage))
 	
-	# Use the cleaned title for headlines too
-	headlines.append({"title":clean_title,"number":str(pageNum + startPage)})
+	headlines.append({"title":newsArticle["title"],"number":str(pageNum + startPage)})
 	
 	# Iterate the page counter
 	pageNum += 1
@@ -385,15 +291,13 @@ for newsArticle in newsData['entries']:
 	if pageNum > maxPages:
 		break
 
-# Next we create P111, the headlines
+
+# Next we create P101, the headlines
 # Start by loading the template
-newsIndexTemplate = loadTTI("sportgeneral_index.tti")
+newsIndexTemplate = loadTTI("news_index.tti")
 
 # Create a page
-teletextPage = {"number":301,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
-
-# Vervang DAY/DATE placeholders met echte Finse datum
-teletextPage = vervang_datum_in_tti(teletextPage)
+teletextPage = {"number":180,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
 
 line = 5
 
@@ -412,18 +316,44 @@ for headline in headlines:
 	
 	# Add this paragraph to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	exportTTI(pageLegaliser(teletextPage))
 
-exportTTI(pageLegaliser(teletextPage))
+# Next we create P101, the headlines
+# Start by loading the template
+newsIndexTemplate = loadTTI("news_index.tti")
 
+# Create a page
+teletextPage = {"number":600,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
+
+line = 5
+
+for headline in headlines:
+	paraBlock = toTeletextBlock(
+		input = {"content":[{"align":"left","content":[{"colour":"white","text":headline["title"]}]},{"align":"right","content":[{"colour":"yellow","text":headline["number"]}]}]},
+		line = line
+	)
+	
+	# Is this going to make the page too long?
+	if (len(paraBlock) + line) > 22:
+		break
+	
+	# Move on the line pointer
+	line += (len(paraBlock) + 1)
+	
+	# Add this paragraph to the teletext page
+	teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	exportTTI(pageLegaliser(teletextPage))
 # Load the template page for the header & footer
-newsPageTemplate = loadTTI("jalkapallo_page.tti")
+newsPageTemplate = loadTTI("news_page.tti")
 
 # How many news pages do we want to create?
-maxPages = 4
-startPage = 309
+maxPages = 10
+startPage = 221
 
-# Download and parse an RSS Feed of news from Yle
-newsData = feedparser.parse("https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_URHEILU&concepts=18-205598")
+# Download and parse an RSS Feed of news from NOS
+newsData = feedparser.parse("https://feeds.nos.nl/nosvoetbal")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -439,15 +369,9 @@ for newsArticle in newsData['entries']:
 	# Create a new teletext page
 	teletextPage = {"number":(pageNum + startPage),"subpages":[{"packets":copy.deepcopy(newsPageTemplate["subpages"][0]["packets"])}]}
 	
-	# Vervang DAY/DATE placeholders in de template
-	teletextPage = vervang_datum_in_tti(teletextPage)
-	
-	# Get the title from Yle RSS - CLEAN IT FOR JALKAPALLO!
-	clean_title = clean_text_aggressive(newsArticle["title"].strip())
-	
 	# Create the title
 	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":clean_title}]}]},
+		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":newsArticle["title"]}]}]},
 		line = line
 	)
 	
@@ -457,26 +381,22 @@ for newsArticle in newsData['entries']:
 	# Add the title to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
 	
-	# Yle gebruikt 'description' voor de samenvatting
-	if "description" in newsArticle:
-		article_text = newsArticle["description"]
-	else:
-		article_text = newsArticle["title"]  # fallback
-
-	# CLEAN THE TEXT AGGRESSIVELY FOR JALKAPALLO!
-	article_text = clean_text_aggressive(article_text)
-    
-	# Voor Yle is description plain text, maar we gebruiken BeautifulSoup voor de zekerheid
-	soup = BeautifulSoup(article_text, "lxml")
+	# NOS provides news within the RSS feed, encoded as HTML
+	# So we use BeautifulSoup to extract the HTML
+	NOSSoup = BeautifulSoup(newsArticle['summary'], "lxml")
+	NOSResults = NOSSoup.find_all('p')
 	
-	# Maak één paragraaf van de beschrijving
-	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"white","text":soup.get_text()}]}]},
-		line = line
-	)
-	
-	# Is this going to make the page too long?
-	if (len(paraBlock) + line) <= 22:
+	for paragraph in NOSResults:
+		# Create a teletext paragraph
+		paraBlock = toTeletextBlock(
+			input = {"content":[{"align":"left","content":[{"colour":"white","text":paragraph.text}]}]},
+			line = line
+		)
+		
+		# Is this going to make the page too long?
+		if (len(paraBlock) + line) > 22:
+			break
+		
 		# Move on the line pointer
 		line += (len(paraBlock) + 1)
 		
@@ -487,8 +407,7 @@ for newsArticle in newsData['entries']:
 	# We run it through "legaliser", this fixes the accented characters, but may be wrong for your country!
 	exportTTI(pageLegaliser(teletextPage))
 	
-	# Use the cleaned title for headlines too
-	headlines.append({"title":clean_title,"number":str(pageNum + startPage)})
+	headlines.append({"title":newsArticle["title"],"number":str(pageNum + startPage)})
 	
 	# Iterate the page counter
 	pageNum += 1
@@ -497,15 +416,12 @@ for newsArticle in newsData['entries']:
 	if pageNum > maxPages:
 		break
 
-# Next we create P308, the headlines
+# Next we create P101, the headlines
 # Start by loading the template
-newsIndexTemplate = loadTTI("jalkapallo_index.tti")
+newsIndexTemplate = loadTTI("news_index.tti")
 
 # Create a page
-teletextPage = {"number":308,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
-
-# Vervang DAY/DATE placeholders met echte Finse datum
-teletextPage = vervang_datum_in_tti(teletextPage)
+teletextPage = {"number":220,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
 
 line = 5
 
@@ -524,18 +440,16 @@ for headline in headlines:
 	
 	# Add this paragraph to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
-
-exportTTI(pageLegaliser(teletextPage))
-
+	
+	exportTTI(pageLegaliser(teletextPage))
 # Load the template page for the header & footer
-newsPageTemplate = loadTTI("matkailu_page.tti")
+newsPageTemplate = loadTTI("news_page.tti")
 
 # How many news pages do we want to create?
-maxPages = 4
-startPage = 402
-
-# Download and parse an RSS Feed of news from Yle
-newsData = feedparser.parse("https://yle.fi/rss/t/18-206851/fi")
+maxPages = 10
+startPage = 161
+# Download and parse an RSS Feed of news from NOS
+newsData = feedparser.parse("https://www.omroepwest.nl/rss/bollenstreek.xml")
 
 # Initialise a Page Counter
 pageNum = 0
@@ -551,15 +465,9 @@ for newsArticle in newsData['entries']:
 	# Create a new teletext page
 	teletextPage = {"number":(pageNum + startPage),"subpages":[{"packets":copy.deepcopy(newsPageTemplate["subpages"][0]["packets"])}]}
 	
-	# Vervang DAY/DATE placeholders in de template
-	teletextPage = vervang_datum_in_tti(teletextPage)
-	
-	# Get the title from Yle RSS
-	clean_title = newsArticle["title"].strip()
-	
 	# Create the title
 	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":clean_title}]}]},
+		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":newsArticle["title"]}]}]},
 		line = line
 	)
 	
@@ -569,26 +477,22 @@ for newsArticle in newsData['entries']:
 	# Add the title to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
 	
-	# Yle gebruikt 'description' voor de samenvatting
-	if "description" in newsArticle:
-		article_text = newsArticle["description"]
-	else:
-		article_text = newsArticle["title"]  # fallback
-
-	# fix: verwijder soft hyphen (U+00AD)
-	article_text = article_text.replace("\u00AD", "")
-    
-	# Voor Yle is description plain text, maar we gebruiken BeautifulSoup voor de zekerheid
-	soup = BeautifulSoup(article_text, "lxml")
+	# NOS provides news within the RSS feed, encoded as HTML
+	# So we use BeautifulSoup to extract the HTML
+	NOSSoup = BeautifulSoup(newsArticle['summary'], "lxml")
+	NOSResults = NOSSoup.find_all('p')
 	
-	# Maak één paragraaf van de beschrijving
-	paraBlock = toTeletextBlock(
-		input = {"content":[{"align":"left","content":[{"colour":"white","text":soup.get_text()}]}]},
-		line = line
-	)
-	
-	# Is this going to make the page too long?
-	if (len(paraBlock) + line) <= 22:
+	for paragraph in NOSResults:
+		# Create a teletext paragraph
+		paraBlock = toTeletextBlock(
+			input = {"content":[{"align":"left","content":[{"colour":"white","text":paragraph.text}]}]},
+			line = line
+		)
+		
+		# Is this going to make the page too long?
+		if (len(paraBlock) + line) > 22:
+			break
+		
 		# Move on the line pointer
 		line += (len(paraBlock) + 1)
 		
@@ -599,8 +503,7 @@ for newsArticle in newsData['entries']:
 	# We run it through "legaliser", this fixes the accented characters, but may be wrong for your country!
 	exportTTI(pageLegaliser(teletextPage))
 	
-	# Use the cleaned title for headlines too
-	headlines.append({"title":clean_title,"number":str(pageNum + startPage)})
+	headlines.append({"title":newsArticle["title"],"number":str(pageNum + startPage)})
 	
 	# Iterate the page counter
 	pageNum += 1
@@ -609,15 +512,12 @@ for newsArticle in newsData['entries']:
 	if pageNum > maxPages:
 		break
 
-# Next we create P111, the headlines
+# Next we create P101, the headlines
 # Start by loading the template
-newsIndexTemplate = loadTTI("matkailu_index.tti")
+newsIndexTemplate = loadTTI("news_index.tti")
 
 # Create a page
-teletextPage = {"number":401,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
-
-# Vervang DAY/DATE placeholders met echte Finse datum
-teletextPage = vervang_datum_in_tti(teletextPage)
+teletextPage = {"number":160,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
 
 line = 5
 
@@ -636,24 +536,206 @@ for headline in headlines:
 	
 	# Add this paragraph to the teletext page
 	teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	exportTTI(pageLegaliser(teletextPage))
+# Load the template page for the header & footer
+newsPageTemplate = loadTTI("news_page.tti")
 
-exportTTI(pageLegaliser(teletextPage))
+# How many news pages do we want to create?
+maxPages = 10
+startPage = 241
+# Download and parse an RSS Feed of news from NOS
+newsData = feedparser.parse("https://feeds.nos.nl/nossportformule1")
 
-# Reset headlines naar paauutiset voor P100
-newsData = feedparser.parse("https://yle.fi/rss/uutiset/paauutiset")
+# Initialise a Page Counter
+pageNum = 0
+
+# Create a headlines list for P101
 headlines = []
 
+# Loop through each news story to produce pages
+for newsArticle in newsData['entries']:
+	# Set the first line we write on
+	line = 5
+	
+	# Create a new teletext page
+	teletextPage = {"number":(pageNum + startPage),"subpages":[{"packets":copy.deepcopy(newsPageTemplate["subpages"][0]["packets"])}]}
+	
+	# Create the title
+	paraBlock = toTeletextBlock(
+		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":newsArticle["title"]}]}]},
+		line = line
+	)
+	
+	# Move on the line pointer
+	line += (len(paraBlock) + 1)
+	
+	# Add the title to the teletext page
+	teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	# NOS provides news within the RSS feed, encoded as HTML
+	# So we use BeautifulSoup to extract the HTML
+	NOSSoup = BeautifulSoup(newsArticle['summary'], "lxml")
+	NOSResults = NOSSoup.find_all('p')
+	
+	for paragraph in NOSResults:
+		# Create a teletext paragraph
+		paraBlock = toTeletextBlock(
+			input = {"content":[{"align":"left","content":[{"colour":"white","text":paragraph.text}]}]},
+			line = line
+		)
+		
+		# Is this going to make the page too long?
+		if (len(paraBlock) + line) > 22:
+			break
+		
+		# Move on the line pointer
+		line += (len(paraBlock) + 1)
+		
+		# Add this paragraph to the teletext page
+		teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	# Export the final page
+	# We run it through "legaliser", this fixes the accented characters, but may be wrong for your country!
+	exportTTI(pageLegaliser(teletextPage))
+	
+	headlines.append({"title":newsArticle["title"],"number":str(pageNum + startPage)})
+	
+	# Iterate the page counter
+	pageNum += 1
+	
+	# Stop when we have enough pages
+	if pageNum > maxPages:
+		break
+
+# Next we create P101, the headlines
+# Start by loading the template
+newsIndexTemplate = loadTTI("news_index.tti")
+
+# Create a page
+teletextPage = {"number":240,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
+
+line = 5
+
+for headline in headlines:
+	paraBlock = toTeletextBlock(
+		input = {"content":[{"align":"left","content":[{"colour":"white","text":headline["title"]}]},{"align":"right","content":[{"colour":"yellow","text":headline["number"]}]}]},
+		line = line
+	)
+	
+	# Is this going to make the page too long?
+	if (len(paraBlock) + line) > 22:
+		break
+	
+	# Move on the line pointer
+	line += (len(paraBlock) + 1)
+	
+	# Add this paragraph to the teletext page
+	teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	exportTTI(pageLegaliser(teletextPage))
+# Load the template page for the header & footer
+newsPageTemplate = loadTTI("news_page.tti")
+
+# How many news pages do we want to create?
+maxPages = 10
+startPage = 261
+# Download and parse an RSS Feed of news from NOS
+newsData = feedparser.parse("https://feeds.nos.nl/nosnieuwspolitiek")
+
+# Initialise a Page Counter
 pageNum = 0
-for newsArticle in newsData['entries'][:10]:
-    clean_title = newsArticle["title"].strip()
-    headlines.append({"title":clean_title,"number":str(102 + pageNum)})
-    pageNum += 1
+
+# Create a headlines list for P101
+headlines = []
+
+# Loop through each news story to produce pages
+for newsArticle in newsData['entries']:
+	# Set the first line we write on
+	line = 5
+	
+	# Create a new teletext page
+	teletextPage = {"number":(pageNum + startPage),"subpages":[{"packets":copy.deepcopy(newsPageTemplate["subpages"][0]["packets"])}]}
+	
+	# Create the title
+	paraBlock = toTeletextBlock(
+		input = {"content":[{"align":"left","content":[{"colour":"yellow","text":newsArticle["title"]}]}]},
+		line = line
+	)
+	
+	# Move on the line pointer
+	line += (len(paraBlock) + 1)
+	
+	# Add the title to the teletext page
+	teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	# NOS provides news within the RSS feed, encoded as HTML
+	# So we use BeautifulSoup to extract the HTML
+	NOSSoup = BeautifulSoup(newsArticle['summary'], "lxml")
+	NOSResults = NOSSoup.find_all('p')
+	
+	for paragraph in NOSResults:
+		# Create a teletext paragraph
+		paraBlock = toTeletextBlock(
+			input = {"content":[{"align":"left","content":[{"colour":"white","text":paragraph.text}]}]},
+			line = line
+		)
+		
+		# Is this going to make the page too long?
+		if (len(paraBlock) + line) > 22:
+			break
+		
+		# Move on the line pointer
+		line += (len(paraBlock) + 1)
+		
+		# Add this paragraph to the teletext page
+		teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	# Export the final page
+	# We run it through "legaliser", this fixes the accented characters, but may be wrong for your country!
+	exportTTI(pageLegaliser(teletextPage))
+	
+	headlines.append({"title":newsArticle["title"],"number":str(pageNum + startPage)})
+	
+	# Iterate the page counter
+	pageNum += 1
+	
+	# Stop when we have enough pages
+	if pageNum > maxPages:
+		break
+
+# Next we create P101, the headlines
+# Start by loading the template
+newsIndexTemplate = loadTTI("news_index.tti")
+
+# Create a page
+teletextPage = {"number":260,"subpages":[{"packets":copy.deepcopy(newsIndexTemplate["subpages"][0]["packets"])}]}
+
+line = 5
+
+for headline in headlines:
+	paraBlock = toTeletextBlock(
+		input = {"content":[{"align":"left","content":[{"colour":"white","text":headline["title"]}]},{"align":"right","content":[{"colour":"yellow","text":headline["number"]}]}]},
+		line = line
+	)
+	
+	# Is this going to make the page too long?
+	if (len(paraBlock) + line) > 22:
+		break
+	
+	# Move on the line pointer
+	line += (len(paraBlock) + 1)
+	
+	# Add this paragraph to the teletext page
+	teletextPage["subpages"][0]["packets"] += paraBlock
+	
+	exportTTI(pageLegaliser(teletextPage))
 
 # Finally, let's make P100, the main service index.
 frontPageTemplate = loadTTI("front_page.tti")
 
 # Create a page
-teletextPage = {"number":100,"control":{"cycleTime":"5,T"},"subpages":[]}
+teletextPage = {"number":100,"subpages":[]}
 
 for headline in headlines:
 	paraBlock = toTeletextBlock(
@@ -662,12 +744,14 @@ for headline in headlines:
 				{"align":"left","postWrapLimit":{"maxLines":2,"cutoff":36},"content":[{"colour":"white","text":headline["title"]}]},
 				{"align":"right","content":[{"colour":"yellow","text":headline["number"]}]}
 			]},
-		line = 17
+		line = 5
 	)
 	
 	newSubpage = {"packets":copy.deepcopy(frontPageTemplate["subpages"][0]["packets"]) + paraBlock}
 	
 	teletextPage["subpages"].append(newSubpage)
 
+
 exportTTI(pageLegaliser(teletextPage))
-newsreel.run_newsreel()
+
+
