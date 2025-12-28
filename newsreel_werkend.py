@@ -27,6 +27,12 @@ def get_intro_template():
     elif month == 12 and day <= 27:
         return "kerst_intro.tti"
     
+    # 31 december t/m 2 januari: nieuwjaar intro
+    if month == 12 and day == 31:
+        return "nieuwjaar_intro.tti"
+    elif month == 1 and day <= 2:
+        return "nieuwjaar_intro.tti"
+    
     # Standaard intro voor alle andere dagen
     return "newsreel_intro.tti"
 
